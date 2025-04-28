@@ -8,6 +8,7 @@ const port = 3000;
 // Importar rutas
 const authRoutes = require('./routes/auth');
 const tablaRoutes = require('./routes/tabla');
+const excelRoutes = require('./routes/excel');
 
 // Middleware
 app.use(express.urlencoded({ extended: true }));
@@ -26,6 +27,7 @@ app.use(session({
 // Rutas
 app.use('/', authRoutes);
 app.use('/tabla', tablaRoutes);
+app.use('/exportar-excel', excelRoutes);
 
 
 app.listen(port, () => {

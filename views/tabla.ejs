@@ -34,10 +34,16 @@
   </nav>
 
   <div class="container mt-4">
-    <h2>Lista de Trabajadores</h2>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h2>Lista de Trabajadores</h2>
+      <a href="/exportar-excel/trabajadores" class="btn btn-success">
+        <i class="bi bi-file-earmark-excel"></i> Exportar a Excel
+      </a>
+    </div>
+   
     <div class="table-responsive">
       <table class="table table-striped table-hover">
-        <thead>
+        <thead class="table-primary">
           <tr>
             <th>Núm. Trabajador</th>
             <th>Nombre</th>
@@ -62,21 +68,21 @@
                 <td><%= trabajador.email_institucional || '-' %></td>
                 <% if (user.isAdmin) { %>
                   <td>
-                    <!-- Botón Editar (CORRECTO) -->
-                    <a href="/tabla/worker/edit/<%= trabajador.id_trabajador %>" class="btn btn-sm btn-warning me-1">
-                      <i class="bi bi-pencil"></i> Editar
-                    </a>
-                    <!-- Botón Eliminar (CORRECTO) -->
-                    <button onclick="confirmDelete(<%= trabajador.id_trabajador %>)" class="btn btn-sm btn-danger">
-                      <i class="bi bi-trash"></i> Eliminar
-                    </button>
+                    <div class="d-flex">
+                      <a href="/tabla/worker/edit/<%= trabajador.id_trabajador %>" class="btn btn-sm btn-warning me-2">
+                        <i class="bi bi-pencil"></i> Editar
+                      </a>
+                      <button onclick="confirmDelete(<%= trabajador.id_trabajador %>)" class="btn btn-sm btn-danger">
+                        <i class="bi bi-trash"></i> Eliminar
+                      </button>
+                    </div>
                   </td>
                 <% } %>
               </tr>
             <% }); %>
           <% } else { %>
             <tr>
-              <td colspan="<%= user.isAdmin ? 7 : 6 %>" class="text-center">
+              <td colspan="<%= user.isAdmin ? 7 : 6 %>" class="text-center text-muted py-4">
                 No hay trabajadores registrados
               </td>
             </tr>
@@ -89,7 +95,7 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     function confirmDelete(id) {
-      if (confirm('¿Eliminar este trabajador permanentemente?')) {
+      if (confirm('¿Está seguro que desea eliminar este trabajador permanentemente?')) {
         window.location.href = `/tabla/worker/delete/${id}`;
       }
     }
