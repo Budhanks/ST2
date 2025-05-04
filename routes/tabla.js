@@ -10,22 +10,83 @@ function isAuthenticated(req, res, next) {
   res.redirect('/login');
 }
 
+// Función auxiliar para obtener categorías y grados
+async function getCategoriesAndDegrees() {
+  const [categorias] = await db.execute('SELECT * FROM categorias');
+  const [grados] = await db.execute('SELECT * FROM grados_academicos');
+  return { categorias, grados };
+}
+
 // Vista principal de trabajadores
 router.get('/', isAuthenticated, async (req, res) => {
   try {
+    const { categorias, grados } = await getCategoriesAndDegrees();
+    
     const [trabajadores] = await db.execute(`
       SELECT t.*, c.nombre as categoria, g.nombre as grado_academico
       FROM trabajadores t
       LEFT JOIN categorias c ON t.id_categoria = c.id_categoria
       LEFT JOIN grados_academicos g ON t.id_grado = g.id_grado
     `);
+    
     res.render('tabla', {
       user: req.session.user,
-      trabajadores: trabajadores
+      trabajadores: trabajadores,
+      categorias: categorias,
+      grados: grados,
+      searchParams: null
     });
   } catch (error) {
     console.error('Error en tabla:', error);
     res.status(500).send('Error al cargar la tabla');
+  }
+});
+
+// Ruta para búsqueda/filtrado
+router.get('/search', isAuthenticated, async (req, res) => {
+  try {
+    const { nombre, categoria, grado } = req.query;
+    const { categorias, grados } = await getCategoriesAndDegrees();
+    
+    // Construir consulta SQL dinámica con parámetros
+    let sql = `
+      SELECT t.*, c.nombre as categoria, g.nombre as grado_academico
+      FROM trabajadores t
+      LEFT JOIN categorias c ON t.id_categoria = c.id_categoria
+      LEFT JOIN grados_academicos g ON t.id_grado = g.id_grado
+      WHERE 1=1
+    `;
+    
+    const params = [];
+    
+    // Añadir condiciones según los filtros proporcionados
+    if (nombre && nombre.trim() !== '') {
+      sql += ` AND t.nombre_completo LIKE ?`;
+      params.push(`%${nombre}%`);
+    }
+    
+    if (categoria && categoria !== '') {
+      sql += ` AND t.id_categoria = ?`;
+      params.push(categoria);
+    }
+    
+    if (grado && grado !== '') {
+      sql += ` AND t.id_grado = ?`;
+      params.push(grado);
+    }
+    
+    const [trabajadores] = await db.execute(sql, params);
+    
+    res.render('tabla', {
+      user: req.session.user,
+      trabajadores: trabajadores,
+      categorias: categorias,
+      grados: grados,
+      searchParams: req.query
+    });
+  } catch (error) {
+    console.error('Error en búsqueda:', error);
+    res.status(500).send('Error al realizar la búsqueda');
   }
 });
 
@@ -35,8 +96,7 @@ router.get('/admin', isAuthenticated, async (req, res) => {
     return res.redirect('/tabla');
   }
   try {
-    const [categorias] = await db.execute('SELECT * FROM categorias');
-    const [grados] = await db.execute('SELECT * FROM grados_academicos');
+    const { categorias, grados } = await getCategoriesAndDegrees();
     res.render('admin', {
       user: req.session.user,
       categorias: categorias,
@@ -55,21 +115,76 @@ router.get('/exportar', isAuthenticated, async (req, res) => {
   }
 
   try {
-    const [rows] = await db.execute(`
-      SELECT t.id_trabajador, t.numero_trabajador, t.nombre_completo, c.nombre AS categoria, g.nombre AS grado_academico,
-             t.antiguedad_unam, t.email_institucional
+    // Obtener los parámetros de búsqueda para exportar resultados filtrados
+    const { nombre, categoria, grado } = req.query;
+    
+    // Construir consulta SQL dinámica con parámetros
+    let sql = `
+      SELECT t.id_trabajador, t.numero_trabajador, t.nombre_completo, 
+             c.nombre AS categoria, g.nombre AS grado_academico,
+             t.antiguedad_unam, t.email_institucional,
+             t.rfc, t.curp, t.telefono_casa, t.telefono_celular, t.direccion,
+             t.genero, t.antiguedad_carrera
       FROM trabajadores t
       LEFT JOIN categorias c ON t.id_categoria = c.id_categoria
       LEFT JOIN grados_academicos g ON t.id_grado = g.id_grado
-    `);
+      WHERE 1=1
+    `;
+    
+    const params = [];
+    
+    // Añadir condiciones según los filtros proporcionados
+    if (nombre && nombre.trim() !== '') {
+      sql += ` AND t.nombre_completo LIKE ?`;
+      params.push(`%${nombre}%`);
+    }
+    
+    if (categoria && categoria !== '') {
+      sql += ` AND t.id_categoria = ?`;
+      params.push(categoria);
+    }
+    
+    if (grado && grado !== '') {
+      sql += ` AND t.id_grado = ?`;
+      params.push(grado);
+    }
+    
+    const [rows] = await db.execute(sql, params);
 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Trabajadores');
 
-    if (rows.length > 0) {
-      worksheet.columns = Object.keys(rows[0]).map(key => ({ header: key, key }));
-      rows.forEach(row => worksheet.addRow(row));
-    }
+    // Definir columnas con nombres más amigables
+    worksheet.columns = [
+      { header: 'ID', key: 'id_trabajador', width: 10 },
+      { header: 'Número de Trabajador', key: 'numero_trabajador', width: 20 },
+      { header: 'Nombre Completo', key: 'nombre_completo', width: 30 },
+      { header: 'Categoría', key: 'categoria', width: 25 },
+      { header: 'Grado Académico', key: 'grado_academico', width: 20 },
+      { header: 'Antigüedad UNAM (años)', key: 'antiguedad_unam', width: 15 },
+      { header: 'Email Institucional', key: 'email_institucional', width: 30 },
+      { header: 'RFC', key: 'rfc', width: 15 },
+      { header: 'CURP', key: 'curp', width: 20 },
+      { header: 'Teléfono Casa', key: 'telefono_casa', width: 15 },
+      { header: 'Teléfono Celular', key: 'telefono_celular', width: 15 },
+      { header: 'Dirección', key: 'direccion', width: 40 },
+      { header: 'Género', key: 'genero', width: 10 },
+      { header: 'Antigüedad Carrera (años)', key: 'antiguedad_carrera', width: 15 }
+    ];
+
+    // Agregar filas
+    rows.forEach(row => {
+      // Formatear el género para más claridad
+      if (row.genero === 'M') row.genero = 'Masculino';
+      else if (row.genero === 'F') row.genero = 'Femenino';
+      else if (row.genero === 'O') row.genero = 'Otro';
+      
+      worksheet.addRow(row);
+    });
+
+    // Dar formato a las celdas de encabezado
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename=trabajadores.xlsx');
@@ -124,20 +239,19 @@ router.post('/worker/add', isAuthenticated, async (req, res) => {
 
 // Editar trabajador
 router.get('/worker/edit/:id', isAuthenticated, async (req, res) => {
-  if (!req.session.user.isAdmin) return res.status(403).send('Acceso denegado');
   try {
     const [trabajador] = await db.execute(
       'SELECT * FROM trabajadores WHERE id_trabajador = ?', 
       [req.params.id]
     );
-    const [categorias] = await db.execute('SELECT * FROM categorias');
-    const [grados] = await db.execute('SELECT * FROM grados_academicos');
+    const { categorias, grados } = await getCategoriesAndDegrees();
 
     res.render('edit-worker', {
       user: req.session.user,
       trabajador: trabajador[0],
       categorias,
-      grados
+      grados,
+      isAdmin: req.session.user.isAdmin
     });
   } catch (error) {
     console.error('Error al cargar edición:', error);
