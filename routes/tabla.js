@@ -10,14 +10,12 @@ function isAuthenticated(req, res, next) {
   res.redirect('/login');
 }
 
-// Función auxiliar para obtener categorías y grados
 async function getCategoriesAndDegrees() {
   const [categorias] = await db.execute('SELECT * FROM categorias');
   const [grados] = await db.execute('SELECT * FROM grados_academicos');
   return { categorias, grados };
 }
 
-// Vista principal de trabajadores
 router.get('/', isAuthenticated, async (req, res) => {
   try {
     const { categorias, grados } = await getCategoriesAndDegrees();
@@ -42,13 +40,11 @@ router.get('/', isAuthenticated, async (req, res) => {
   }
 });
 
-// Ruta para búsqueda/filtrado
 router.get('/search', isAuthenticated, async (req, res) => {
   try {
     const { nombre, categoria, grado } = req.query;
     const { categorias, grados } = await getCategoriesAndDegrees();
     
-    // Construir consulta SQL dinámica con parámetros
     let sql = `
       SELECT t.*, c.nombre as categoria, g.nombre as grado_academico
       FROM trabajadores t
@@ -59,7 +55,6 @@ router.get('/search', isAuthenticated, async (req, res) => {
     
     const params = [];
     
-    // Añadir condiciones según los filtros proporcionados
     if (nombre && nombre.trim() !== '') {
       sql += ` AND t.nombre_completo LIKE ?`;
       params.push(`%${nombre}%`);
@@ -90,7 +85,6 @@ router.get('/search', isAuthenticated, async (req, res) => {
   }
 });
 
-// Panel de administración
 router.get('/admin', isAuthenticated, async (req, res) => {
   if (!req.session.user.isAdmin) {
     return res.redirect('/tabla');
@@ -118,7 +112,6 @@ router.get('/exportar', isAuthenticated, async (req, res) => {
     // Obtener los parámetros de búsqueda para exportar resultados filtrados
     const { nombre, categoria, grado } = req.query;
     
-    // Construir consulta SQL dinámica con parámetros
     let sql = `
       SELECT t.id_trabajador, t.numero_trabajador, t.nombre_completo, 
              c.nombre AS categoria, g.nombre AS grado_academico,
@@ -133,7 +126,6 @@ router.get('/exportar', isAuthenticated, async (req, res) => {
     
     const params = [];
     
-    // Añadir condiciones según los filtros proporcionados
     if (nombre && nombre.trim() !== '') {
       sql += ` AND t.nombre_completo LIKE ?`;
       params.push(`%${nombre}%`);
@@ -154,7 +146,6 @@ router.get('/exportar', isAuthenticated, async (req, res) => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Trabajadores');
 
-    // Definir columnas con nombres más amigables
     worksheet.columns = [
       { header: 'ID', key: 'id_trabajador', width: 10 },
       { header: 'Número de Trabajador', key: 'numero_trabajador', width: 20 },
@@ -172,9 +163,7 @@ router.get('/exportar', isAuthenticated, async (req, res) => {
       { header: 'Antigüedad Carrera (años)', key: 'antiguedad_carrera', width: 15 }
     ];
 
-    // Agregar filas
     rows.forEach(row => {
-      // Formatear el género para más claridad
       if (row.genero === 'M') row.genero = 'Masculino';
       else if (row.genero === 'F') row.genero = 'Femenino';
       else if (row.genero === 'O') row.genero = 'Otro';
@@ -182,7 +171,6 @@ router.get('/exportar', isAuthenticated, async (req, res) => {
       worksheet.addRow(row);
     });
 
-    // Dar formato a las celdas de encabezado
     worksheet.getRow(1).font = { bold: true };
     worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
 
@@ -197,7 +185,6 @@ router.get('/exportar', isAuthenticated, async (req, res) => {
   }
 });
 
-// Agregar nuevo trabajador
 router.post('/worker/add', isAuthenticated, async (req, res) => {
   if (!req.session.user.isAdmin) {
     return res.status(403).send('Acceso denegado');
@@ -237,7 +224,6 @@ router.post('/worker/add', isAuthenticated, async (req, res) => {
   }
 });
 
-// Editar trabajador
 router.get('/worker/edit/:id', isAuthenticated, async (req, res) => {
   try {
     const [trabajador] = await db.execute(
@@ -259,7 +245,6 @@ router.get('/worker/edit/:id', isAuthenticated, async (req, res) => {
   }
 });
 
-// Actualizar trabajador
 router.post('/worker/update/:id', isAuthenticated, async (req, res) => {
   if (!req.session.user.isAdmin) return res.status(403).send('Acceso denegado');
   try {
@@ -319,7 +304,6 @@ router.post('/worker/update/:id', isAuthenticated, async (req, res) => {
   }
 });
 
-// Eliminar trabajador
 router.get('/worker/delete/:id', isAuthenticated, async (req, res) => {
   if (!req.session.user.isAdmin) return res.status(403).send('Acceso denegado');
   try {
