@@ -8,7 +8,6 @@ const port = 3000;
 // Importar rutas
 const authRoutes = require('./routes/auth');
 const tablaRoutes = require('./routes/tabla');
-const excelRoutes = require('./routes/excel');
 
 // Middleware
 app.use(express.urlencoded({ extended: true }));
@@ -24,12 +23,17 @@ app.use(session({
   cookie: { maxAge: 3600000 } // 1 hora
 }));
 
+// Hacer que el usuario esté disponible en todas las vistas EJS
+app.use((req, res, next) => {
+  res.locals.user = req.session.user || null;
+  next();
+});
+
 // Rutas
 app.use('/', authRoutes);
 app.use('/tabla', tablaRoutes);
-app.use('/exportar-excel', excelRoutes);
 
-
+// Iniciar servidor
 app.listen(port, () => {
   console.log(`Servidor ejecutándose en el puerto ${port}`);
 });
