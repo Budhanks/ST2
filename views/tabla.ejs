@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" />
 </head>
 <body>
+  <!-- Navbar -->
   <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
     <div class="container-fluid px-2 py-2">
       <a class="navbar-brand" href="/tabla">Sistema de Secretaría Técnica</a>
@@ -74,7 +75,7 @@
     </div>
   </div>
 
-  <!-- Tabla -->
+  <!-- Tabla de trabajadores -->
   <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
       <h2>Lista de Trabajadores</h2>
@@ -84,12 +85,13 @@
         </a>
       <% } %>
     </div>
-    <div class="table-responsive" style="overflow-x: auto; white-space: nowrap;">
+    <div class="table-responsive">
       <table class="table table-striped table-hover">
         <thead>
           <tr>
             <th>Núm. Trabajador</th>
             <th>Nombre</th>
+            <th>Género</th>
             <th>Categoría</th>
             <th>Grado Académico</th>
             <th>Antigüedad UNAM</th>
@@ -97,8 +99,8 @@
             <% if (user.isAdmin) { %>
               <th>RFC</th>
               <th>CURP</th>
-              <th>Teléfono Casa</th>
-              <th>Teléfono Celular</th>
+              <th>Tel. Casa</th>
+              <th>Celular</th>
               <th>Dirección</th>
               <th>Acciones</th>
             <% } %>
@@ -110,6 +112,7 @@
               <tr>
                 <td><%= trabajador.numero_trabajador %></td>
                 <td><%= trabajador.nombre_completo %></td>
+                <td><%= trabajador.genero === 'M' ? 'Masculino' : (trabajador.genero === 'F' ? 'Femenino' : 'Otro') %></td>
                 <td><%= trabajador.categoria || 'No asignada' %></td>
                 <td><%= trabajador.grado_academico || 'No asignado' %></td>
                 <td><%= trabajador.antiguedad_unam || 0 %> años</td>
@@ -133,7 +136,7 @@
             <% }); %>
           <% } else { %>
             <tr>
-              <td colspan="<%= user.isAdmin ? 12 : 6 %>" class="text-center">No hay trabajadores registrados</td>
+              <td colspan="<%= user.isAdmin ? 13 : 7 %>" class="text-center">No hay trabajadores registrados</td>
             </tr>
           <% } %>
         </tbody>
@@ -142,63 +145,160 @@
   </div>
 
   <!-- Gráficas -->
-  <% if (user.isAdmin && graficaData) { %>
-  <div class="container mt-5">
-    <div class="row">
-      <div class="col-md-6 mb-4">
-        <h5 class="text-center">Por Categoría</h5>
-        <div class="d-flex justify-content-center">
-          <canvas id="graficaCategorias" width="400" height="200"></canvas>
+  <% if (user.isAdmin) { %>
+    <div class="container mt-5">
+      <div class="row">
+        <div class="col-md-6 mb-4">
+          <div class="card">
+            <div class="card-header bg-light">
+              <h5 class="mb-0 text-center">Por Categoría</h5>
+            </div>
+            <div class="card-body">
+              <canvas id="graficaCategorias" width="300" height="300"></canvas>
+            </div>
+          </div>
         </div>
-      </div>
-      <div class="col-md-6 mb-4">
-        <h5 class="text-center">Por Grado Académico</h5>
-        <div class="d-flex justify-content-center">
-          <canvas id="graficaGrados" width="400" height="200"></canvas>
+        <div class="col-md-6 mb-4">
+          <div class="card">
+            <div class="card-header bg-light">
+              <h5 class="mb-0 text-center">Por Grado Académico</h5>
+            </div>
+            <div class="card-body">
+              <canvas id="graficaGrados" width="300" height="300"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6 mb-4">
+          <div class="card">
+            <div class="card-header bg-light">
+              <h5 class="mb-0 text-center">Por Antigüedad UNAM</h5>
+            </div>
+            <div class="card-body">
+              <canvas id="graficaAntiguedad" width="300" height="300"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-6 mb-4">
+          <div class="card">
+            <div class="card-header bg-light">
+              <h5 class="mb-0 text-center">Por Género</h5>
+            </div>
+            <div class="card-body">
+              <canvas id="graficaGenero" width="300" height="300"></canvas>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-    <div class="mt-4">
-      <h5 class="text-center">Por Antigüedad UNAM</h5>
-      <div class="d-flex justify-content-center">
-        <canvas id="graficaAntiguedad" width="400" height="200"></canvas>
-      </div>
-    </div>
-  </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script>
-    const grafico = (id, labels, data) => {
-      new Chart(document.getElementById(id).getContext('2d'), {
-        type: 'pie',
-        data: {
-          labels: labels,
-          datasets: [{
-            data: data,
-            backgroundColor: ['rgba(54, 162, 235, 0.6)', 'rgba(255, 99, 132, 0.6)', 'rgba(75, 192, 192, 0.6)', 'rgba(153, 102, 255, 0.6)', 'rgba(255, 159, 64, 0.6)'],
-            borderColor: 'rgba(0, 0, 0, 0.1)',
-            borderWidth: 1
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { position: 'top' } }
+    <!-- Script para las gráficas -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        // Colores para las gráficas
+        const colores = [
+          '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', 
+          '#FF9F40', '#C9CBCF', '#7FBA00', '#00A4EF', '#F25022'
+        ];
+
+        // Convertir datos del backend al formato requerido
+        const formatearDatos = (data) => {
+          if (!data || !data.labels || !data.valores) return [];
+          return data.labels.map((label, index) => ({
+            nombre: label,
+            genero: label,
+            rango: label,
+            total: data.valores[index]
+          }));
+        };
+
+        // Obtener datos de las gráficas
+        const generoData = formatearDatos(<%- JSON.stringify(generoData || null) %>);
+        const categoriasData = formatearDatos(<%- JSON.stringify(graficaData || null) %>);
+        const gradosData = formatearDatos(<%- JSON.stringify(gradosData || null) %>);
+        const antiguedadData = formatearDatos(<%- JSON.stringify(antiguedadData || null) %>);
+
+        // Función para crear gráfica de pastel
+        function crearGrafica(elementId, data, etiquetaCampo, valorCampo, titulo) {
+          const canvas = document.getElementById(elementId);
+          if (!canvas) return;
+          
+          const ctx = canvas.getContext('2d');
+          
+          if (!data || data.length === 0) {
+            console.warn(`No hay datos para la gráfica: ${titulo}`);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Mostrar mensaje cuando no hay datos
+            ctx.font = '16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#666';
+            ctx.fillText('No hay datos disponibles', canvas.width / 2, canvas.height / 2);
+            return;
+          }
+
+          console.log(`Creando gráfica ${titulo} con datos:`, data);
+
+          // Crear la gráfica
+          new Chart(ctx, {
+            type: 'pie',
+            data: {
+              labels: data.map(item => item[etiquetaCampo] || 'No especificado'),
+              datasets: [{
+                data: data.map(item => item[valorCampo]),
+                backgroundColor: colores.slice(0, data.length)
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { 
+                  position: 'bottom',
+                  labels: {
+                    boxWidth: 12,
+                    padding: 10
+                  }
+                },
+                title: { 
+                  display: true, 
+                  text: titulo,
+                  font: {
+                    size: 16
+                  }
+                },
+                tooltip: {
+                  callbacks: {
+                    label: function(context) {
+                      const label = context.label || '';
+                      const value = context.raw || 0;
+                      const dataset = context.dataset;
+                      const total = dataset.data.reduce((acc, data) => acc + data, 0);
+                      const percentage = Math.round((value / total) * 100);
+                      return `${label}: ${value} (${percentage}%)`;
+                    }
+                  }
+                }
+              }
+            }
+          });
         }
-      });
-    };
 
-    grafico('graficaCategorias', <%- JSON.stringify(graficaData.labels) %>, <%- JSON.stringify(graficaData.valores) %>);
-    grafico('graficaGrados', <%- JSON.stringify(gradosData.labels) %>, <%- JSON.stringify(gradosData.valores) %>);
-    grafico('graficaAntiguedad', <%- JSON.stringify(antiguedadData.labels) %>, <%- JSON.stringify(antiguedadData.valores) %>);
-  </script>
+        // Crear gráficas
+        crearGrafica('graficaGenero', generoData, 'genero', 'total', 'Distribución por Género');
+        crearGrafica('graficaCategorias', categoriasData, 'nombre', 'total', 'Distribución por Categoría');
+        crearGrafica('graficaGrados', gradosData, 'nombre', 'total', 'Distribución por Grado Académico');
+        crearGrafica('graficaAntiguedad', antiguedadData, 'rango', 'total', 'Distribución por Antigüedad');
+      });
+    </script>
   <% } %>
 
+  <!-- Bootstrap JS y modal de confirmación -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     function confirmDelete(id) {
       if (confirm('¿Eliminar este trabajador permanentemente?')) {
-        window.location.href = /tabla/worker/delete/${id};
+        window.location.href = `/tabla/worker/delete/${id}`;
       }
     }
   </script>
