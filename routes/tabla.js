@@ -213,6 +213,49 @@
     }
   });
 
+  // Agregar nuevo trabajador
+router.post('/worker/add', isAuthenticated, async (req, res) => {
+  if (!req.session.user.isAdmin) {
+    return res.status(403).send('Acceso denegado');
+  }
+  
+  try {
+    const {
+      numero_trabajador,
+      nombre_completo,
+      genero,
+      rfc,
+      curp,
+      id_categoria,
+      id_grado,
+      antiguedad_unam,
+      antiguedad_carrera,
+      email_institucional,
+      telefono_casa,
+      telefono_celular,
+      direccion
+    } = req.body;
+    
+    await db.execute(
+      `INSERT INTO trabajadores (
+        numero_trabajador, nombre_completo, genero, rfc, curp,
+        id_categoria, id_grado, antiguedad_unam, antiguedad_carrera,
+        email_institucional, telefono_casa, telefono_celular, direccion
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        numero_trabajador, nombre_completo, genero, rfc, curp,
+        id_categoria, id_grado, antiguedad_unam, antiguedad_carrera,
+        email_institucional, telefono_casa, telefono_celular, direccion
+      ]
+    );
+    
+    res.redirect('/tabla');
+  } catch (error) {
+    console.error('Error al agregar trabajador:', error);
+    res.status(500).send('Error al agregar trabajador');
+  }
+});
+
   // Exportar a Excel
   router.get('/exportar', isAuthenticated, async (req, res) => {
     if (!req.session.user.isAdmin) {
@@ -489,5 +532,124 @@
       });
     }
   });
+
+// Mostrar formulario de edición
+router.get('/worker/edit/:id', isAuthenticated, async (req, res) => {
+  if (!req.session.user.isAdmin) {
+    return res.status(403).send('Acceso denegado');
+  }
+
+  const { id } = req.params;
+
+  try {
+    const [trabajadorResult] = await db.execute(
+      'SELECT * FROM trabajadores WHERE id_trabajador = ?',
+      [id]
+    );
+    const trabajador = trabajadorResult[0];
+
+    const [categoriasResult] = await db.execute('SELECT * FROM categoria');
+    const [gradosResult] = await db.execute('SELECT * FROM grado_academico');
+
+    if (!trabajador) {
+      return res.status(404).send('Trabajador no encontrado');
+    }
+
+    res.render('editar-trabajador', {
+      trabajador,
+      categorias: categoriasResult,
+      grados: gradosResult,
+      user: req.session.user
+    });
+  } catch (error) {
+    console.error('Error al obtener trabajador para edición:', error);
+    res.status(500).send('Error del servidor');
+  }
+});
+
+
+  // Editar trabajador existente
+router.post('/worker/edit/:id', isAuthenticated, async (req, res) => {
+  if (!req.session.user.isAdmin) {
+    return res.status(403).send('Acceso denegado');
+  }
+
+  const { id } = req.params;
+  const {
+    numero_trabajador,
+    nombre_completo,
+    genero,
+    rfc,
+    curp,
+    id_categoria,
+    id_grado,
+    antiguedad_unam,
+    antiguedad_carrera,
+    email_institucional,
+    telefono_casa,
+    telefono_celular,
+    direccion
+  } = req.body;
+
+  try {
+    await db.execute(`
+      UPDATE trabajadores SET
+        numero_trabajador = ?,
+        nombre_completo = ?,
+        genero = ?,
+        rfc = ?,
+        curp = ?,
+        id_categoria = ?,
+        id_grado = ?,
+        antiguedad_unam = ?,
+        antiguedad_carrera = ?,
+        email_institucional = ?,
+        telefono_casa = ?,
+        telefono_celular = ?,
+        direccion = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id_trabajador = ?
+    `, [
+      numero_trabajador,
+      nombre_completo,
+      genero,
+      rfc,
+      curp,
+      id_categoria,
+      id_grado,
+      antiguedad_unam,
+      antiguedad_carrera,
+      email_institucional,
+      telefono_casa,
+      telefono_celular,
+      direccion,
+      id
+    ]);
+
+    res.redirect('/tabla');
+  } catch (error) {
+  console.error('Error al obtener trabajador para edición:', error);
+  res.status(500).send('Error del servidor');
+}
+});
+
+router.get('/tabla/worker/edit/:id', async (req, res) => {
+  const workerId = req.params.id;
+
+  try {
+    const [rows] = await db.query('SELECT * FROM trabajadores WHERE id = ?', [workerId]);
+    
+    if (rows.length === 0) {
+      return res.status(404).send('Trabajador no encontrado');
+    }
+
+    res.render('edit-worker', { worker: rows[0] }); // Asegúrate de tener una vista "edit-worker.ejs" o similar
+  } catch (error) {
+    console.error('Error al obtener trabajador para edición:', error);
+    res.status(500).send('Error del servidor');
+  }
+});
+
+
 
   module.exports = router;
