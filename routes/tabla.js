@@ -490,4 +490,198 @@
     }
   });
 
+  router.get('/worker/edit/:id', isAuthenticated, async (req, res) => {
+  try {
+    const id = req.params.id;
+    const { categorias, grados } = await getCategoriesAndDegrees();
+    
+    const [trabajadores] = await db.execute(
+      'SELECT * FROM trabajadores WHERE id_trabajador = ?',
+      [id]
+    );
+    
+    if (trabajadores.length === 0) {
+      return res.status(404).send('Trabajador no encontrado');
+    }
+    
+    res.render('edit-worker', {
+      user: req.session.user,
+      trabajador: trabajadores[0],
+      categorias,
+      grados
+    });
+    
+  } catch (error) {
+    console.error('Error al cargar formulario de edición:', error);
+    res.status(500).send('Error al cargar el formulario de edición');
+  }
+});
+
+// Actualizar trabajador
+router.post('/worker/update/:id', isAuthenticated, async (req, res) => {
+  if (!req.session.user.isAdmin) {
+    return res.status(403).send('No autorizado');
+  }
+  
+  try {
+    const id = req.params.id;
+    const {
+      numero_trabajador,
+      nombre_completo,
+      genero,
+      rfc,
+      curp,
+      id_categoria,
+      id_grado,
+      antiguedad_unam,
+      antiguedad_carrera,
+      email_institucional,
+      telefono_casa,
+      telefono_celular,
+      direccion
+    } = req.body;
+    
+    await db.execute(
+      `UPDATE trabajadores SET 
+        numero_trabajador = ?,
+        nombre_completo = ?,
+        genero = ?,
+        rfc = ?,
+        curp = ?,
+        id_categoria = ?,
+        id_grado = ?,
+        antiguedad_unam = ?,
+        antiguedad_carrera = ?,
+        email_institucional = ?,
+        telefono_casa = ?,
+        telefono_celular = ?,
+        direccion = ?
+      WHERE id_trabajador = ?`,
+      [
+        numero_trabajador,
+        nombre_completo,
+        genero,
+        rfc || null,
+        curp || null,
+        id_categoria || null,
+        id_grado || null,
+        antiguedad_unam || 0,
+        antiguedad_carrera || 0,
+        email_institucional || null,
+        telefono_casa || null,
+        telefono_celular || null,
+        direccion || null,
+        id
+      ]
+    );
+    
+    res.redirect('/tabla');
+    
+  } catch (error) {
+    console.error('Error al actualizar trabajador:', error);
+    res.status(500).send('Error al actualizar el trabajador');
+  }
+});
+
+// Eliminar trabajador
+router.get('/worker/delete/:id', isAuthenticated, async (req, res) => {
+  if (!req.session.user.isAdmin) {
+    return res.status(403).send('No autorizado');
+  }
+  
+  try {
+    const id = req.params.id;
+    
+    await db.execute(
+      'DELETE FROM trabajadores WHERE id_trabajador = ?',
+      [id]
+    );
+    
+    res.redirect('/tabla');
+    
+  } catch (error) {
+    console.error('Error al eliminar trabajador:', error);
+    res.status(500).send('Error al eliminar el trabajador');
+  }
+});
+
+// Ruta para agregar un nuevo trabajador (desde panel admin)
+router.post('/worker/add', isAuthenticated, async (req, res) => {
+  if (!req.session.user.isAdmin) {
+    return res.status(403).send('No autorizado');
+  }
+  
+  try {
+    const {
+      numero_trabajador,
+      nombre_completo,
+      genero,
+      rfc,
+      curp,
+      id_categoria,
+      id_grado,
+      antiguedad_unam,
+      antiguedad_carrera,
+      email_institucional,
+      telefono_casa,
+      telefono_celular,
+      direccion
+    } = req.body;
+    
+    // Validar campos obligatorios
+    if (!numero_trabajador || !nombre_completo) {
+      return res.status(400).send('El número de trabajador y nombre son obligatorios');
+    }
+    
+    // Verificar si ya existe un trabajador con ese número
+    const [existingWorker] = await db.execute(
+      'SELECT id_trabajador FROM trabajadores WHERE numero_trabajador = ?',
+      [numero_trabajador]
+    );
+    
+    if (existingWorker.length > 0) {
+      return res.status(400).send('Ya existe un trabajador con ese número');
+    }
+    
+    await db.execute(
+      `INSERT INTO trabajadores (
+        numero_trabajador,
+        nombre_completo,
+        genero,
+        rfc,
+        curp,
+        id_categoria,
+        id_grado,
+        antiguedad_unam,
+        antiguedad_carrera,
+        email_institucional,
+        telefono_casa,
+        telefono_celular,
+        direccion
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        numero_trabajador,
+        nombre_completo,
+        genero || null,
+        rfc || null,
+        curp || null,
+        id_categoria || null,
+        id_grado || null,
+        antiguedad_unam || 0,
+        antiguedad_carrera || 0,
+        email_institucional || null,
+        telefono_casa || null,
+        telefono_celular || null,
+        direccion || null
+      ]
+    );
+    
+    res.redirect('/tabla');
+    
+  } catch (error) {
+    console.error('Error al agregar trabajador:', error);
+    res.status(500).send('Error al agregar el trabajador');
+  }
+});
+
   module.exports = router;
